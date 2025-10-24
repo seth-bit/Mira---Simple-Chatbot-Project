@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles } from "lucide-react";
-import './app.css'
+import "./app.css";
 
 interface Message {
   id: number;
@@ -30,12 +30,12 @@ export default function MiraChatbot() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  // Handle sending messages
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    // ✅ Explicitly typed as Message to match the interface
     const userMessage: Message = {
-      id: messages.length + 1,
+      id: Date.now(),
       text: input,
       sender: "user",
       timestamp: new Date(),
@@ -45,20 +45,41 @@ export default function MiraChatbot() {
     setInput("");
     setIsTyping(true);
 
-    // Simulate bot response after a short delay
-    setTimeout(() => {
+    try {
+      const response = await fetch("http://localhost:5000/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input }),
+      });
+
+      const data = await response.json();
+
       const botMessage: Message = {
-        id: messages.length + 2, // Prevent ID collision
-        text: "I'm a demo chatbot. In a real implementation, I would connect to your backend API to process this message and provide a meaningful response!",
+        id: Date.now() + 1,
+        text: data.reply || "🤖 I didn’t quite get that.",
         sender: "bot",
         timestamp: new Date(),
       };
 
+      // Add bot reply
       setMessages((prev) => [...prev, botMessage]);
-      setIsTyping(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Error connecting to backend:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          text: "⚠️ Unable to reach the AI server. Please try again later.",
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ]);
+    }
+
+    setIsTyping(false);
   };
 
+  // Press Enter to send
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -77,12 +98,12 @@ export default function MiraChatbot() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Mira</h1>
-              <p className="text-purple-100 text-sm">Your AI Assistant</p>
+              <p className="text-purple-100 text-sm">Powered by Gemini AI</p>
             </div>
           </div>
         </div>
 
-        {/* Messages Container */}
+        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.map((message) => (
             <div
@@ -98,7 +119,9 @@ export default function MiraChatbot() {
                     : "bg-gray-100 text-gray-800"
                 }`}
               >
-                <p className="text-sm leading-relaxed">{message.text}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {message.text}
+                </p>
                 <p
                   className={`text-xs mt-1 ${
                     message.sender === "user"
@@ -120,10 +143,7 @@ export default function MiraChatbot() {
             <div className="flex justify-start">
               <div className="bg-gray-100 rounded-2xl px-4 py-3">
                 <div className="flex gap-1">
-                  <div
-                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0ms" }}
-                  ></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                   <div
                     className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
                     style={{ animationDelay: "150ms" }}
@@ -136,11 +156,10 @@ export default function MiraChatbot() {
               </div>
             </div>
           )}
-
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
+        {/* Input area */}
         <div className="border-t border-gray-200 p-4 bg-gray-50">
           <div className="flex gap-2">
             <input
